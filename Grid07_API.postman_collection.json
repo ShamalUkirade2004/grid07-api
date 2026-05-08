@@ -1,0 +1,183 @@
+{
+  "info": {
+    "name": "Grid07 API",
+    "description": "Spring Boot Microservice - Core API & Guardrails",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "postId",  "value": "1",                    "type": "string" },
+    { "key": "userId",  "value": "1",                    "type": "string" },
+    { "key": "botId",   "value": "1",                    "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Setup",
+      "item": [
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/users", "host": ["{{baseUrl}}"], "path": ["api", "users"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"alice\",\n  \"premium\": false\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Bot",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/bots", "host": ["{{baseUrl}}"], "path": ["api", "bots"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"GPT-Bot-1\",\n  \"personaDescription\": \"A helpful AI assistant bot.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/users", "host": ["{{baseUrl}}"], "path": ["api", "users"] }
+          }
+        },
+        {
+          "name": "List Bots",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/api/bots", "host": ["{{baseUrl}}"], "path": ["api", "bots"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Phase 1 - Posts",
+      "item": [
+        {
+          "name": "Create Post (by User)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/posts", "host": ["{{baseUrl}}"], "path": ["api", "posts"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": {{userId}},\n  \"authorType\": \"USER\",\n  \"content\": \"Hello, this is my first post!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Post (by Bot)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl}}/api/posts", "host": ["{{baseUrl}}"], "path": ["api", "posts"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": {{botId}},\n  \"authorType\": \"BOT\",\n  \"content\": \"I am a bot and I just created a post.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Add Human Comment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}", "comments"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": {{userId}},\n  \"authorType\": \"USER\",\n  \"content\": \"Nice post!\",\n  \"depthLevel\": 1\n}"
+            }
+          }
+        },
+        {
+          "name": "Like a Post",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}/like",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}", "like"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": {{userId}}\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Phase 2 - Guardrails",
+      "item": [
+        {
+          "name": "Bot Comment (should pass)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}", "comments"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": {{botId}},\n  \"authorType\": \"BOT\",\n  \"content\": \"I am a bot replying to this post.\",\n  \"depthLevel\": 1,\n  \"botId\": {{botId}},\n  \"humanOwnerId\": {{userId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "Bot Comment - Cooldown (2nd request, expect 429)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}", "comments"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": {{botId}},\n  \"authorType\": \"BOT\",\n  \"content\": \"Second reply within 10 minutes - should be blocked!\",\n  \"depthLevel\": 1,\n  \"botId\": {{botId}},\n  \"humanOwnerId\": {{userId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "Bot Comment - Depth 21 (expect 429)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}/comments",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}", "comments"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"authorId\": {{botId}},\n  \"authorType\": \"BOT\",\n  \"content\": \"This comment is too deep!\",\n  \"depthLevel\": 21,\n  \"botId\": {{botId}},\n  \"humanOwnerId\": {{userId}}\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Virality Score",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/posts/{{postId}}/virality",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "posts", "{{postId}}", "virality"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
